@@ -63,7 +63,7 @@ Use this project under the terms of the MIT license.
 
 
 ## Included Tools
-###Fixed-Seating-Classroom-Planner
+### Fixed-Seating-Classroom-Planner
 This tool is used for rooms in which the seats are all drawn into the diagram,
 and cannot be moved. To run the tool, add the room diagram image to the tool 
 folder then launch the ClassroomPlanner.ipynb file through your Jupyter 
