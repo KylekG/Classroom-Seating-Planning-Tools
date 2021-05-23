@@ -2,6 +2,16 @@ import cv2
 import input as cpi
 import numpy as np
 
+AVAILABLE_COLOR = (0, 0, 0)
+UNAVAILABLE_COLOR = (150, 150, 150)
+COMPLETED_COLOR = (0, 255, 0)
+NOT_COMPLETED_COLOR = (0, 0, 255)
+COMPLETED_TEXT = "Completed"
+NOT_COMPLETED_TEXT = "Not Completed"
+NOT_COMPLETED_X_ADJUST = 12
+COMPLETED_X_ADJUST = 36
+BUTTON_THICKNESS = 5
+
 GREEN = (0, 255, 0)
 PURPLE = (255, 0, 255)
 RED = (0, 0, 255)
@@ -40,546 +50,357 @@ SOLVE_BUTTON_START_PT = (470, 765)
 SOLVE_BUTTON_END_PT = (670, 815)
 SOLVE_BUTTON_BL = (75, 800)
 
-NOT_COMPLETED_X_ADJUST = 12
-COMPLETED_X_ADJUST = 36
+
+class MenuButton():
+    """MenuButton is a class used to create the buttons in the menu given to
+    the user. Each button stores information on its position, its completion
+    status, the buttons it is dependent on in order to be made available to the
+    user, its name, and the corresponding input callback to its name. Using the
+    methods for MenuButton, it is possible to verify whether or not a button is
+    elligible to be run, check if a button has been clicked, run the input
+    callback stored in the buttton, and update the completion status of the
+    button.
+
+
+    Instance variables:
+
+    text_BL -- An (int,int) tuple representing the bottom left corner for
+    where to write the button text.
+
+    points -- An array of 4 (int, int) tuples representing the coordinates
+    of the corners of the button.
+
+    dependencies -- An array of MenuButton instances that need to be
+    completed before the button should be run.
+
+    input_callback -- The input callback tied to the button. This should
+    be a function that corresponds to title_text and takes only
+    (non_writable_img, menu_refresh, window_name, room_info) as its keyword
+    arguments. non_writable_img should be a cv2 image of the room diagram. Not
+    meant to be written on by the code. menu_refresh should be a list that will
+    be appended to upon completion of the function. window_name should be the
+    name (string) of the cv2 window for the function to use. And room_info
+    should be the RoomInfo instance being used to keep track of input
+    information.
+
+    completed -- A bool representing whether or not the button has been
+    completed by the user.
+
+    title_text -- A string storing the text that should be written on the
+    button.
+
+    completions_key -- The key corresponding to the input callback for the
+    button used in the completions_dict in the RoomInfo instance being used to
+    keep track of tasks completed by the user.
+
+
+    Public Methods:
+
+    draw -- A method to draw the button in a provided image.
+
+    try_run_callback -- A method to run the callback if dependencies have been
+    completed.
+
+    check_click -- A method to check if the coords provided constitute a valid
+    button click.
+
+    update_completion_status -- A method to update the completion status of a
+    button.
+
+    mark_as_completed -- A method to update the completions_dict used to keep
+    track of completions with the completion of the button.
+    """
+
+    def __init__(self, text_BL, point1, point2, dependencies, input_callback,
+                 title_text, completions_key):
+        """ The constructor for the MenuButton class.
+
+
+        Keyword Arguments:
+
+        text_BL -- An (int,int) tuple representing the bottom left corner for
+        where to write the button text.
+
+        point1 -- An (int,int) tuple representing a corner of the button.
+
+        point2 -- An (int,int) tuple representing the corner of the button
+        opposite to point1.
+
+        dependencies -- An array of MenuButton instances that need to be
+        completed before the input_callback of the button should be run.
+
+        input_callback -- The input callback tied to the button. This should
+        be a function that corresponds to title_text and takes only
+        (non_writable_img, menu_refresh, window_name, room_info) as its keyword
+        arguments. non_writable_img should be a cv2 image of the room diagram.
+        Not meant to be written on by the code. menu_refresh should be a list
+        that will be appended to upon completion of the function. window_name
+        should be the name (string) of the cv2 window for the function to use.
+        And room_info should be the RoomInfo instance being used to keep track
+        of input information.
+
+        title_text -- A string storing the text that should be written on the
+        button.
+
+        completions_key -- The key corresponding to the input callback for the
+        button used in the completions_dict in the RoomInfo instance being used
+        to keep track of tasks completed by the user.
+        """
+        assert(isinstance(text_BL, tuple)), "text_BL is not a valid tuple"
+        assert(isinstance(point1, tuple)), "point1 is not a valid tuple"
+        assert(isinstance(point2, tuple)), "point2 is not a valid tuple"
+        assert(len(text_BL) == 2), "text_BL is not a valid tuple"
+        assert(len(point1) == 2), "point1 is not a valid tuple"
+        assert(len(point2) == 2), "point2 is not a valid tuple"
+        for item in text_BL:
+            assert(isinstance(item, int)), "text_BL is not a valid tuple"
+        for item in point1:
+            assert(isinstance(item, int)), "point1 is not a valid tuple"
+        for item in point2:
+            assert(isinstance(item, int)), "point2 is not a valid tuple"
+        assert(isinstance(dependencies, list)), ("dependencies must be a list"
+                                                 " of other MenuButton "
+                                                 "instances.")
+        for item in dependencies:
+            assert(isinstance(item, MenuButton)), ("dependencies must be a "
+                                                   "list of other MenuButton "
+                                                   "instances.")
+            assert(item != self), ("A button cannot be dependent on itself.")
+        assert(isinstance(title_text,str)), ("title_text must be a string.")
+        #TODO assert completions_key is in room_info.completions
+        #TODO: assert input_callback is a callable function.
+        x1 = point1[0]
+        x2 = point2[0]
+        y1 = point1[1]
+        y2 = point2[1]
+        if x1 > x2:
+            x1_temp = x1
+            x1 = x2
+            x2 = x1_temp
+        if y1 > y2:
+            y1_temp = y1
+            y1 = y2
+            y2 = y1_temp
+        self.text_BL = text_BL
+        self.points = [(x1, y1), (x1, y2), (x2, y2), (x2, y1)]
+        self.dependencies = dependencies
+        self.input_callback = input_callback
+        self.completed = False
+        self.title_text = title_text
+        self.completions_key = completions_key
+
+    def draw(self, generated_img):
+        """ The draw method for the MenuButton class. Calling this correctly
+        draws the button in the provided image.
+
+
+        Keyword Argument:
+
+        generated_img -- the cv2 image to draw the button in.
+        """
+        text_color = AVAILABLE_COLOR
+        if self.completed:
+            button_color = COMPLETED_COLOR
+            status_text = COMPLETED_TEXT
+            write_pt = (self.points[0][0] + COMPLETED_X_ADJUST,
+                        self.text_BL[1])
+        else:
+            button_color = NOT_COMPLETED_COLOR
+            status_text = NOT_COMPLETED_TEXT
+            write_pt = (self.points[0][0] + NOT_COMPLETED_X_ADJUST,
+                        self.text_BL[1])
+        for button in self.dependencies:
+            if not button.completed:
+                text_color = UNAVAILABLE_COLOR
+                button_color = UNAVAILABLE_COLOR
+
+        generated_img = cv2.rectangle(generated_img, self.points[0],
+                                      self.points[2], button_color,
+                                      BUTTON_THICKNESS)
+        generated_img = cv2.putText(generated_img, self.title_text,
+                                    self.text_BL, cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.75, text_color, 1, cv2.LINE_AA)
+        generated_img = cv2.putText(generated_img, status_text, write_pt,
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color,
+                                    1, cv2.LINE_AA)
+
+    def try_run_callback(self, non_writable_img, menu_refresher, window_name,
+                         room_info):
+        """ A method used to try and run the input_callback of the button. This
+        method will run the input_callback function for the button if all of
+        the buttons designated in the button's dependencies have been
+        completed.
+
+
+        Keyword arguments:
+
+        non_writable_img -- A cv2 image of the room diagram. Not meant to be
+        written on by the code.
+
+        menu_refresher -- A list that will be appended to upon completion of
+        the function.
+
+        window_name -- The name (string) of the cv2 window for the function to
+        use.
+
+        room_info -- The RoomInfo instance being used to keep track of input
+        information.
+
+        """
+        for button in self.dependencies:
+            if not button.completed:
+                return
+        self.input_callback(non_writable_img, menu_refresher, window_name,
+                            room_info)
+
+    def check_click(self, coords):
+        """ Checks to see if the provided coords can click the button. Returns
+        True if coords is within the button rectangle from points, and all
+        buttons in dependencies have been marked as completed.
+
+
+        Keyword argument:
+
+        coords -- An (int, int) tuple to check the validity for.
+        """
+        if (coords[0] > self.points[0][0]
+            and coords[0] < self.points[2][0]
+            and coords[1] > self.points[0][1]
+            and coords[1] < self.points[2][1]):
+            for button in self.dependencies:
+                if not button.completed:
+                    return
+            return True
+
+    def update_completion_status(self, room_info):
+        """ Updates the completion status for the button.
+
+
+        Keyword argument:
+
+        room_info -- The RoomInfo instance being used to keep track of progress
+        on the room.
+        """
+        if (room_info.get_completions()[self.completions_key]):
+            self.completed = True
+        else:
+            self.completed = False
+
+    def mark_as_completed(self, room_info, menu_buttons):
+        """ Updates the completion status stored in the completions_dict in the
+        RoomInfo instance provided to reflect the completion of the button.
+        This method will mark all buttons dependent on the button the method is
+        being called from as not being completed, then mark the button as
+        completed.
+
+
+        Keyword arguments:
+
+        room_info -- The RoomInfo instance being used to keep track of progress
+        on the room.
+
+        menu_buttons -- A list of all of the MenuButton instances.
+        """
+        completions_copy = room_info.get_completions().copy()
+        for button in menu_buttons:
+            for dependent_button in button.dependencies:
+                if dependent_button == self:
+                    completions_copy[button.completions_key] = False
+        completions_copy[self.completions_key] = True
+        room_info.set_completions(completions_copy)
+
 
 class _MenuInformation:
     """A class to store information for the menu to function properly.
 
 
-    Instance variables:
-
-    completions -- A dict with keys representing input methods. Values must be
-    True or False booleans to indicate whether or not they have been completed.
-    Must mirror room_info.get_completions.
+    Instance variable:
 
     menu_tasks -- A list to keep track of queued tasks by the user. Any time a
-    user wants to do an input step, a string representing the step is added to
-    the list.
+    user wants to do an input step, the clicked button is added to the list.
     """
-    def __init__(self, room_info):
+    
+    def __init__(self):
         """Initializes an instance of the menu information class.
-
-
-        Keyword argument:
-
-        room_info -- The RoomInfo instance being used by the tool to keep track
-        of information about the room.
         """
-        self.completions = room_info.get_completions()
         self.menu_tasks = []
+
+
+scale_select_button = MenuButton(SCALE_SELECT_BUTTON_BL,
+                                 SCALE_SELECT_BUTTON_END_PT,
+                                 SCALE_SELECT_BUTTON_START_PT, [],
+                                 cpi.scale_selection,
+                                 "Scale pixels to distance:",
+                                 "Scale Selection Status")
+chair_select_button = MenuButton(CHAIR_SELECT_BUTTON_BL,
+                                 CHAIR_SELECT_BUTTON_START_PT,
+                                 CHAIR_SELECT_BUTTON_END_PT, [],
+                                 cpi.chair_type_selection,
+                                 "Chair Type Selection:",
+                                 "Chair Type Selection Status")
+poly_create_button = MenuButton(POLY_CREATE_BUTTON_BL,
+                                POLY_CREATE_BUTTON_START_PT,
+                                POLY_CREATE_BUTTON_END_PT,
+                                [chair_select_button],
+                                cpi.polygon_creation, "Polygon Creation:",
+                                "Polygon Creation Status")
+chair_recognition_button = MenuButton(CHAIR_RECOGNITION_BUTTON_BL,
+                                      CHAIR_RECOGNITION_BUTTON_START_PT,
+                                      CHAIR_RECOGNITION_BUTTON_END_PT,
+                                      [chair_select_button,
+                                       poly_create_button],
+                                      cpi.chair_recognition,
+                                      "Chair Recognition:",
+                                      "Chair Recognition Status")
+chair_addition_button = MenuButton(CHAIR_ADDITION_BUTTON_BL,
+                                   CHAIR_ADDITION_BUTTON_START_PT,
+                                   CHAIR_ADDITION_BUTTON_END_PT,
+                                   [chair_select_button, poly_create_button,
+                                    chair_recognition_button],
+                                   cpi.chair_addition, "Chair Addition:",
+                                   "Chair Addition Status")
+chair_deletion_button = MenuButton(CHAIR_DELETION_BUTTON_BL,
+                                   CHAIR_DELETION_BUTTON_START_PT,
+                                   CHAIR_DELETION_BUTTON_END_PT,
+                                   [chair_select_button, poly_create_button,
+                                    chair_recognition_button],
+                                   cpi.chair_deletion, "Chair Deletion:",
+                                   "Chair Deletion Status")
+input_preview_button = MenuButton(INPUT_PREVIEW_BUTTON_BL,
+                                  INPUT_PREVIEW_BUTTON_START_PT,
+                                  INPUT_PREVIEW_BUTTON_END_PT,
+                                  [scale_select_button, chair_select_button,
+                                   poly_create_button,
+                                   chair_recognition_button],
+                                  cpi.input_preview, "Input Preview:",
+                                  "Input Confirmation Status")
+solve_room_button = MenuButton(SOLVE_BUTTON_BL, SOLVE_BUTTON_START_PT,
+                               SOLVE_BUTTON_END_PT,
+                               [scale_select_button, chair_select_button,
+                                poly_create_button, chair_recognition_button,
+                                input_preview_button],
+                               cpi.solve_room, "Solve Room:",
+                               "Solve Room Status")
+menu_buttons = [scale_select_button, chair_select_button, poly_create_button,
+                chair_recognition_button, chair_addition_button,
+                chair_deletion_button, input_preview_button, solve_room_button]
+
 
 def __get_menu_click_coords(event, x, y, flags, menu_info):
     """The private callback for mouse events in the cv2 window for the main
     menu of the tool. On right click within the button for an input method,
-    will add the string representing the input method to menu_info.menu_tasks
-    if the necessary prerequisites for the input method have been marked as
-    True in menu_info.completions.
+    will add the button to menu_info.menu_tasks if its dependencies have been
+    completed.
     """
     if event == cv2.EVENT_LBUTTONDOWN:
-        if (x < SCALE_SELECT_BUTTON_END_PT[0]
-            and x > SCALE_SELECT_BUTTON_START_PT[0]
-            and y < SCALE_SELECT_BUTTON_END_PT[1]
-            and y > SCALE_SELECT_BUTTON_START_PT[1]):
-            menu_info.menu_tasks.append('Scale Selection')
-        elif (x < CHAIR_SELECT_BUTTON_END_PT[0]
-              and x > CHAIR_SELECT_BUTTON_START_PT[0]
-              and y < CHAIR_SELECT_BUTTON_END_PT[1]
-              and y > CHAIR_SELECT_BUTTON_START_PT[1]):
-            menu_info.menu_tasks.append('Chair Type Selection')
-        elif (x < POLY_CREATE_BUTTON_END_PT[0]
-              and x > POLY_CREATE_BUTTON_START_PT[0]
-              and y < POLY_CREATE_BUTTON_END_PT[1]
-              and y > POLY_CREATE_BUTTON_START_PT[1]
-              and menu_info.completions["Chair Type Selection Status"]):
-            menu_info.menu_tasks.append('Polygon Creation Selection')
-        elif (x < CHAIR_RECOGNITION_BUTTON_END_PT[0]
-              and x > CHAIR_RECOGNITION_BUTTON_START_PT[0]
-              and y < CHAIR_RECOGNITION_BUTTON_END_PT[1]
-              and y > CHAIR_RECOGNITION_BUTTON_START_PT[1]
-              and menu_info.completions["Chair Type Selection Status"]):
-            menu_info.menu_tasks.append('Chair Recognition Selection')
-        elif (x < CHAIR_ADDITION_BUTTON_END_PT[0]
-              and x > CHAIR_ADDITION_BUTTON_START_PT[0]
-              and y < CHAIR_ADDITION_BUTTON_END_PT[1]
-              and y > CHAIR_ADDITION_BUTTON_START_PT[1]
-              and menu_info.completions["Chair Recognition Status"]
-              and menu_info.completions["Polygon Creation Status"]):
-            menu_info.menu_tasks.append("Chair Addition Selection")
-        elif (x < CHAIR_DELETION_BUTTON_END_PT[0]
-              and x > CHAIR_DELETION_BUTTON_START_PT[0]
-              and y < CHAIR_DELETION_BUTTON_END_PT[1]
-              and y > CHAIR_DELETION_BUTTON_START_PT[1]
-              and menu_info.completions["Chair Recognition Status"]
-              and menu_info.completions["Polygon Creation Status"]):
-            menu_info.menu_tasks.append("Chair Deletion Selection")
-        elif (x < INPUT_PREVIEW_BUTTON_END_PT[0]
-              and x > INPUT_PREVIEW_BUTTON_START_PT[0]
-              and y < INPUT_PREVIEW_BUTTON_END_PT[1]
-              and y > INPUT_PREVIEW_BUTTON_START_PT[1]
-              and menu_info.completions["Polygon Creation Status"]
-              and menu_info.completions["Chair Recognition Status"]):
-            menu_info.menu_tasks.append("Input Preview")
-        elif (x < SOLVE_BUTTON_END_PT[0]
-              and x > SOLVE_BUTTON_START_PT[0]
-              and y < SOLVE_BUTTON_END_PT[1]
-              and y > SOLVE_BUTTON_START_PT[1]
-              and menu_info.completions["Input Confirmation Status"]):
-            menu_info.menu_tasks.append("Solve And Save")
-
-def __draw_scale_selection_button(menu_info, generated_img, not_complete_color,
-                                  complete_color, available_color,
-                                  button_thickness):
-    """Helper function used to draw the button for the scale selection input
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button's text in.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if not menu_info.completions["Scale Selection Status"]:
-        scale_selection_button_color = not_complete_color
-        scale_selection_status = "Not Completed"
-        scale_selection_status_write_point = ((SCALE_SELECT_BUTTON_START_PT[0]
-                                               + NOT_COMPLETED_X_ADJUST),
-                                              SCALE_SELECT_BUTTON_BL[1])
-    else:
-        scale_selection_button_color = complete_color
-        scale_selection_status = "Completed"
-        scale_selection_status_write_point = ((SCALE_SELECT_BUTTON_START_PT[0]
-                                               + COMPLETED_X_ADJUST),
-                                              SCALE_SELECT_BUTTON_BL[1])
-    generated_img = cv2.rectangle(generated_img, SCALE_SELECT_BUTTON_START_PT,
-                                  SCALE_SELECT_BUTTON_END_PT,
-                                  scale_selection_button_color,
-                                  button_thickness)
-    generated_img = cv2.putText(generated_img, "Scale pixels to distance:",
-                                SCALE_SELECT_BUTTON_BL,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                available_color, 1, cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, scale_selection_status,
-                                scale_selection_status_write_point,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                available_color, 1, cv2.LINE_AA)
-
-def __draw_chairtype_selection_button(menu_info, generated_img,
-                                      not_complete_color,
-                                      complete_color, available_color,
-                                      button_thickness):
-    """Helper function used to draw the button for the chair type selection
-    input method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button's text in.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-
-    if not menu_info.completions["Chair Type Selection Status"]:
-        chair_selection_button_color = not_complete_color
-        chair_selection_status = "Not Completed"
-        chair_selection_status_write_point = ((CHAIR_SELECT_BUTTON_START_PT[0]
-                                               + NOT_COMPLETED_X_ADJUST),
-                                              CHAIR_SELECT_BUTTON_BL[1])
-    else:
-        chair_selection_button_color = complete_color
-        chair_selection_status = "Completed"
-        chair_selection_status_write_point = ((CHAIR_SELECT_BUTTON_START_PT[0]
-                                               + COMPLETED_X_ADJUST),
-                                              CHAIR_SELECT_BUTTON_BL[1])
-    generated_img = cv2.rectangle(generated_img, CHAIR_SELECT_BUTTON_START_PT,
-                                  CHAIR_SELECT_BUTTON_END_PT,
-                                  chair_selection_button_color,
-                                  button_thickness)
-    generated_img = cv2.putText(generated_img, "Chair Type Selection:",
-                                CHAIR_SELECT_BUTTON_BL,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                available_color, 1, cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, chair_selection_status,
-                                chair_selection_status_write_point,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                available_color, 1, cv2.LINE_AA)
-
-def __draw_polygon_creation_selection_button(menu_info, generated_img,
-                                             not_complete_color,
-                                             complete_color, available_color,
-                                             unavailable_color,
-                                             button_thickness):
-    """Helper function used to draw the button for the polygon creation input
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Polygon Creation Status"]:
-        poly_creation_button_color = complete_color
-        poly_creation_status = "Completed"
-        poly_creation_status_write_point = ((POLY_CREATE_BUTTON_START_PT[0]
-                                             + COMPLETED_X_ADJUST),
-                                            POLY_CREATE_BUTTON_BL[1])
-    else:
-        poly_creation_button_color = not_complete_color
-        poly_creation_status = "Not Completed"
-        poly_creation_status_write_point = ((POLY_CREATE_BUTTON_START_PT[0]
-                                             + NOT_COMPLETED_X_ADJUST),
-                                            POLY_CREATE_BUTTON_BL[1])
-    if menu_info.completions["Chair Type Selection Status"]:
-        text_color = available_color
-    else:
-        text_color = unavailable_color
-        poly_creation_button_color = unavailable_color
-    generated_img = cv2.rectangle(generated_img,
-                                  POLY_CREATE_BUTTON_START_PT,
-                                  POLY_CREATE_BUTTON_END_PT,
-                                  poly_creation_button_color, button_thickness)
-    generated_img = cv2.putText(generated_img, "Polygon Creation:",
-                                POLY_CREATE_BUTTON_BL,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, poly_creation_status,
-                                poly_creation_status_write_point,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-
-def __draw_chair_recognition_selection_button(menu_info, generated_img,
-                                              not_complete_color,
-                                              complete_color, available_color,
-                                              unavailable_color,
-                                              button_thickness):
-    """Helper function used to draw the button for the chair recognition input
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Chair Recognition Status"]:
-        recognition_button_color = complete_color
-        recognition_status = "Completed"
-        recognition_status_write_point = ((CHAIR_RECOGNITION_BUTTON_START_PT[0]
-                                           + COMPLETED_X_ADJUST),
-                                          CHAIR_RECOGNITION_BUTTON_BL[1])
-    else:
-        recognition_button_color = not_complete_color
-        recognition_status = "Not Completed"
-        recognition_status_write_point = ((CHAIR_RECOGNITION_BUTTON_START_PT[0]
-                                           + NOT_COMPLETED_X_ADJUST),
-                                          CHAIR_RECOGNITION_BUTTON_BL[1])
-    if menu_info.completions['Polygon Creation Status']:
-        text_color = available_color
-    else:
-        text_color = unavailable_color
-        recognition_button_color = unavailable_color
-    generated_img = cv2.rectangle(generated_img,
-                                 CHAIR_RECOGNITION_BUTTON_START_PT,
-                                 CHAIR_RECOGNITION_BUTTON_END_PT,
-                                 recognition_button_color, button_thickness)
-    generated_img = cv2.putText(generated_img, "Chair Recognition:",
-                               CHAIR_RECOGNITION_BUTTON_BL,
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                               cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, recognition_status,
-                                 recognition_status_write_point,
-                                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                 cv2.LINE_AA)
-
-def __draw_chair_addition_selection_button(menu_info, generated_img,
-                                           not_complete_color, complete_color,
-                                           available_color, unavailable_color,
-                                           button_thickness):
-    """Helper function used to draw the button for the chair addition input
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Chair Addition Status"]:
-        addition_button_color = complete_color
-        addition_status = "Completed"
-        addition_status_write_point = ((CHAIR_ADDITION_BUTTON_START_PT[0]
-                                        + COMPLETED_X_ADJUST),
-                                       CHAIR_ADDITION_BUTTON_BL[1])
-    else:
-        addition_button_color = not_complete_color
-        addition_status = "Not Completed"
-        addition_status_write_point = ((CHAIR_ADDITION_BUTTON_START_PT[0]
-                                        + NOT_COMPLETED_X_ADJUST),
-                                       CHAIR_ADDITION_BUTTON_BL[1])
-    if menu_info.completions["Chair Recognition Status"]:
-        text_color = available_color
-    else:
-        text_color = unavailable_color
-        addition_button_color = unavailable_color
-    generated_img = cv2.rectangle(generated_img,
-                                  CHAIR_ADDITION_BUTTON_START_PT,
-                                  CHAIR_ADDITION_BUTTON_END_PT,
-                                  addition_button_color, button_thickness)
-    generated_img = cv2.putText(generated_img, "Chair Addition:",
-                                CHAIR_ADDITION_BUTTON_BL,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, addition_status,
-                                addition_status_write_point,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-
-def __draw_chair_deletion_selection_button(menu_info, generated_img,
-                                           not_complete_color, complete_color,
-                                           available_color, unavailable_color,
-                                           button_thickness):
-    """Helper function used to draw the button for the chair deletion input
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Chair Deletion Status"]:
-        deletion_button_color = complete_color
-        deletion_status = "Completed"
-        deletion_status_write_point = ((CHAIR_DELETION_BUTTON_START_PT[0]
-                                        + COMPLETED_X_ADJUST),
-                                       CHAIR_DELETION_BUTTON_BL[1])
-    else:
-        deletion_button_color = not_complete_color
-        deletion_status = "Not Completed"
-        deletion_status_write_point = ((CHAIR_DELETION_BUTTON_START_PT[0]
-                                        + NOT_COMPLETED_X_ADJUST),
-                                       CHAIR_DELETION_BUTTON_BL[1])
-    if menu_info.completions["Chair Recognition Status"]:
-        text_color = available_color
-    else:
-        text_color = unavailable_color
-        deletion_button_color = unavailable_color
-    generated_img = cv2.rectangle(generated_img,
-                                  CHAIR_DELETION_BUTTON_START_PT,
-                                  CHAIR_DELETION_BUTTON_END_PT,
-                                  deletion_button_color, button_thickness)
-    generated_img = cv2.putText(generated_img, "Chair Deletion:",
-                                CHAIR_DELETION_BUTTON_BL,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, deletion_status,
-                                deletion_status_write_point,
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                cv2.LINE_AA)
-
-def __draw_input_confirmation_selection_button(menu_info, generated_img,
-                                               not_complete_color,
-                                               complete_color, available_color,
-                                               unavailable_color,
-                                               button_thickness):
-    """Helper function used to draw the button for the input confirmation
-    method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    available_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text in
-    if the task's prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Input Confirmation Status"]:
-        input_preview_button_color = complete_color
-        confirmation_status = "Completed"
-        confirmation_status_write_point = ((INPUT_PREVIEW_BUTTON_START_PT[0]
-                                            + COMPLETED_X_ADJUST),
-                                           INPUT_PREVIEW_BUTTON_BL[1])
-    else:
-        input_preview_button_color = not_complete_color
-        confirmation_status = "Not Completed"
-        confirmation_status_write_point = ((INPUT_PREVIEW_BUTTON_START_PT[0]
-                                            + NOT_COMPLETED_X_ADJUST),
-                                           INPUT_PREVIEW_BUTTON_BL[1])
-    if menu_info.completions["Chair Recognition Status"]:
-        text_color = available_color
-    else:
-        text_color = unavailable_color
-        input_preview_button_color = unavailable_color
-    generated_img = cv2.rectangle(generated_img, INPUT_PREVIEW_BUTTON_START_PT,
-                                  INPUT_PREVIEW_BUTTON_END_PT,
-                                  input_preview_button_color, button_thickness)
-    generated_img = cv2.putText(generated_img, "Input Confirmation:",
-                                 INPUT_PREVIEW_BUTTON_BL,
-                                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                 cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, confirmation_status,
-                                 confirmation_status_write_point,
-                                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, text_color, 1,
-                                 cv2.LINE_AA)
-
-def __draw_solve_and_save_button(menu_info, generated_img, not_complete_color,
-                                 available_color, unavailable_color,
-                                 button_thickness):
-    """Helper function used to draw the button for the solve and save method.
-
-
-    Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    generated_img -- The image to draw the button in.
-
-    not_complete_color -- The BGR Tuple color to draw the button in if the task
-    has not been completed.
-
-    complete_color -- The BGR tuple color to draw the button in if the task has
-    been completed.
-
-    unavailable_color -- The BGR tuple color to draw the button and its text
-    in.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
-    """
-    if menu_info.completions["Input Confirmation Status"]:
-        solve_button_color = not_complete_color
-        text_color = available_color
-    else:
-        solve_button_color = unavailable_color
-        text_color = unavailable_color
-    solve_write_point = ((SOLVE_BUTTON_START_PT[0] + NOT_COMPLETED_X_ADJUST),
-                         SOLVE_BUTTON_BL[1])
-    generated_img = cv2.rectangle(generated_img, SOLVE_BUTTON_START_PT,
-                                  SOLVE_BUTTON_END_PT, solve_button_color,
-                                  button_thickness)
-    generated_img = cv2.putText(generated_img, "Solve and Save Room:",
-                                SOLVE_BUTTON_BL, cv2.FONT_HERSHEY_SIMPLEX,
-                                0.75, text_color, 1, cv2.LINE_AA)
-    generated_img = cv2.putText(generated_img, "Not Completed",
-                                solve_write_point, cv2.FONT_HERSHEY_SIMPLEX,
-                                0.75, text_color, 1, cv2.LINE_AA)
-
-def __draw_menu(menu_info, not_complete_color, complete_color, available_color,
-                unavailable_color, button_thickness, screen_height,
-                screen_width):
+        for button in menu_buttons:
+            if(button.check_click((x,y))):
+                menu_info.menu_tasks.append(button)
+
+def __draw_menu(screen_height, screen_width):
     """Helper function used to draw the menu.
 
     Keyword arguments:
-
-    menu_info -- The _MenuInformation instance being used by the menu.
-
-    not_complete_color -- The BGR Tuple color to draw buttons in if their tasks
-    has not been completed.
-
-    complete_color -- The BGR Tuple color to draw buttons in if their tasks
-    have been completed.
-
-    available_color -- The BGR tuple color to draw buttons in if their
-    prerequisites have been met.
-
-    unavailable_color -- The BGR tuple color to draw buttons in if their
-    prerequisites have not been met.
-
-    button_thickness -- The thickness to use when drawing the button's edges.
 
     screen_height -- The height (in pixels) of the user's screen. Must be an
     int. Can be less than the true amount but cannot be more.
@@ -587,48 +408,17 @@ def __draw_menu(menu_info, not_complete_color, complete_color, available_color,
     screen_width -- The width (in pixels) of the user's screen. Must be an
     int. Can be less than the true amount but cannot be more.
     """
+
     generated_img = np.ones((screen_height, screen_width, 1), np.uint8) * 255
     generated_img = cv2.cvtColor(generated_img, cv2.COLOR_GRAY2RGB)
 
-    __draw_scale_selection_button(menu_info, generated_img, not_complete_color,
-                                  complete_color, available_color,
-                                  button_thickness)
-    __draw_chairtype_selection_button(menu_info, generated_img,
-                                      not_complete_color, complete_color,
-                                      available_color, button_thickness)
-    __draw_polygon_creation_selection_button(menu_info, generated_img,
-                                             not_complete_color,
-                                             complete_color, available_color,
-                                             unavailable_color,
-                                             button_thickness)
-    __draw_chair_recognition_selection_button(menu_info, generated_img,
-                                              not_complete_color,
-                                              complete_color, available_color,
-                                              unavailable_color,
-                                              button_thickness)
-    __draw_chair_addition_selection_button(menu_info, generated_img,
-                                           not_complete_color, complete_color,
-                                           available_color, unavailable_color,
-                                           button_thickness)
-    __draw_chair_deletion_selection_button(menu_info, generated_img,
-                                           not_complete_color, complete_color,
-                                           available_color, unavailable_color,
-                                           button_thickness)
-    __draw_input_confirmation_selection_button(menu_info, generated_img,
-                                               not_complete_color,
-                                               complete_color, available_color,
-                                               unavailable_color,
-                                               button_thickness)
-    __draw_solve_and_save_button(menu_info, generated_img, not_complete_color,
-                                 available_color, unavailable_color,
-                                 button_thickness)
+    for button in menu_buttons:
+        button.draw(generated_img)
+
     return generated_img
 
-def main_menu(screen_height, screen_width, room_type, room_info,
-             save_to_json, json_save_name, scale_units_length,
-             units_to_distance, scale_orientation, chair_scale, solution_name,
-             sol_dpi, finding_threshold, show_instr, window_name, dot_size,
-             height, width, non_writable_img):
+def main_menu(screen_height, screen_width, room_type, room_info, window_name,
+              non_writable_img):
     """This function handles the menu of the classroom solving tool. First, the
     function generates an image of the menu and has the cv2 window display it.
     Whenever a click is detected within the window, the function checks to see
@@ -660,149 +450,30 @@ def main_menu(screen_height, screen_width, room_type, room_info,
     room_info -- The RoomInfo instance being used by the tool to keep track of
     the data for the room.
 
-    save_to_json -- Whether or not to save data to json (currently not
-    functional).
-
-    json_save_name -- The filename to use when saving the data to json.
-
-    scale_units_length -- How many units (feet meters e.t.c.) long the room
-    diagram's scale is. Must be an int or a float.
-
-    units_to_distance -- How many units (same units as scale_units_length) to
-    distance seats within the room by. Must be an int or float.
-
-    scale_orientation -- the orientation of the room diagram's scale. Must be
-    either the string value "Horizontal" or "Vertical".
-
-    chair_scale -- The amount (int) to scale each chair orientation up by when
-    making the chair shape inputs.
-
-    solution_name -- The filename (string) to use when writing the solution
-    diagram.
-
-    solution_dpi -- The dpi (int) to use when writing the solution diagram.
-
-    finding_threshold -- The finding_threshold for the recognition process.
-    A float with a minimum of 0 and maximum of 1. Higher values will result in
-    less chairs  being placed. At 1, no chairs will be identified, but
-    finding_threshold that are too low will result in erroneous chair
-    placements.
-
-    show_instr -- A bool representing whether or not to show instructions.
-
     window_name -- The name (string) of the cv2 window for the function to use.
 
-    dot_size -- The size (int) to use when drawing dots.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    non_writable_img --
+    non_writable_img -- The image of the room diagram.
     """
     menu_refresher = ['r']
-    menu_info = _MenuInformation(room_info)
+    menu_info = _MenuInformation()
 
-    button_thickness = 5
-    available_color = BLACK
-    unavailable_color = GRAY
-    not_complete_color = RED
-    complete_color = GREEN
-
-    generated_img = __draw_menu(menu_info, not_complete_color, complete_color,
-                                available_color, unavailable_color,
-                                button_thickness, screen_height, screen_width)
+    generated_img = __draw_menu(screen_height, screen_width)
     cv2.setMouseCallback(window_name, __get_menu_click_coords, menu_info)
     while True:
         if len(menu_refresher) > 0:
-            generated_img = __draw_menu(menu_info, not_complete_color,
-                                        complete_color, available_color,
-                                        unavailable_color, button_thickness,
-                                        screen_height, screen_width)
+            for button in menu_buttons:
+                button.update_completion_status(room_info)
+            generated_img = __draw_menu(screen_height, screen_width)
             menu_refresher = []
         cv2.imshow(window_name, generated_img)
 
         if len(menu_info.menu_tasks) > 0:
-            if menu_info.menu_tasks[0] == 'Scale Selection':
-                cpi.scale_selection(non_writable_img, menu_refresher,
-                                    show_instr, window_name, screen_height,
-                                    screen_width, room_info, height, width,
-                                    PURPLE, GREEN, scale_orientation,
-                                    scale_units_length, units_to_distance)
-                menu_info.completions["Scale Selection Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Chair Type Selection':
-                menu_info.completions["Polygon Creation Status"] = False
-                menu_info.completions["Chair Recognition Status"] = False
-                menu_info.completions["Chair Addition Status"] = False
-                menu_info.completions["Chair Deletion Status"] = False
-                menu_info.completions["Input Confirmation Status"] = False
-                cpi.chair_type_selection(non_writable_img, menu_refresher,
-                                         show_instr, window_name,
-                                         screen_height, screen_width,
-                                         room_info, height, width, PURPLE,
-                                         GREEN)
-                menu_info.completions["Chair Type Selection Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Polygon Creation Selection':
-                menu_info.completions["Chair Recognition Status"] = False
-                menu_info.completions["Chair Addition Status"] = False
-                menu_info.completions["Chair Deletion Status"] = False
-                menu_info.completions["Input Confirmation Status"] = False
-                cpi.polygon_creation(non_writable_img, menu_refresher,
-                                     room_info, show_instr, window_name,
-                                     screen_height, screen_width, height,
-                                     width, RED, chair_scale, dot_size)
-                menu_info.completions["Polygon Creation Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Chair Recognition Selection':
-                menu_info.completions["Chair Addition Status"] = False
-                menu_info.completions["Chair Deletion Status"] = False
-                menu_info.completions["Input Confirmation Status"] = False
-                cpi.chair_recognition(non_writable_img, menu_refresher,
-                                      room_info, show_instr, window_name,
-                                      screen_height, screen_width, height,
-                                      width, finding_threshold, RED)
-                menu_info.completions["Chair Recognition Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Chair Addition Selection':
-                menu_info.completions["Input Confirmation Status"] = False
-                cpi.chair_addition(non_writable_img, menu_refresher, room_info,
-                                   show_instr, window_name, screen_height,
-                                   screen_width, height, width, RED, PURPLE,
-                                   GREEN)
-                menu_info.completions["Chair Addition Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Chair Deletion Selection':
-                menu_info.completions["Input Confirmation Status"] = False
-                cpi.chair_deletion(non_writable_img, menu_refresher, window_name,
-                                   screen_height, screen_width, room_info,
-                                   show_instr, height, width, PURPLE, GREEN,
-                                   RED)
-                menu_info.completions["Chair Deletion Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Input Preview':
-                cpi.input_preview(non_writable_img, menu_refresher, window_name,
-                                  screen_height, screen_width, room_info,
-                                  show_instr, height, width, RED, PURPLE,
-                                  save_to_json, json_save_name)
-                menu_info.completions["Input Confirmation Status"] = True
-                room_info.set_completions(menu_info.completions)
-                menu_info.menu_tasks = []
-            elif menu_info.menu_tasks[0] == 'Solve And Save':
-                cpi.solve_room(non_writable_img, menu_refresher, show_instr,
-                               window_name, screen_height, screen_width,
-                               room_info, sol_dpi, solution_name)
-                cv2.destroyAllWindows()
-                break
-
-
+            menu_info.menu_tasks[0].try_run_callback(non_writable_img,
+                                                     menu_refresher,
+                                                     window_name,
+                                                     room_info)
+            menu_info.menu_tasks[0].mark_as_completed(room_info, menu_buttons)
+            menu_info.menu_tasks = []
         else:
             cv2.setMouseCallback(window_name, __get_menu_click_coords,
                                  menu_info)

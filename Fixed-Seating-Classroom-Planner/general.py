@@ -5,6 +5,12 @@ import cv2
 NOT_SET = False
 DOT_SIZE = 1
 
+GREEN = (0, 255, 0)
+PURPLE = (255, 0, 255)
+RED = (0, 0, 255)
+GRAY = (150, 150, 150)
+BLACK = (0, 0, 0)
+
 def get_coords(rect):
     """Takes an np.array with coords of rectangle.
 
@@ -392,7 +398,10 @@ class _ChairPoly():
         #TODO: add assert statements
         self.chair_type = chair_type
         centroid = Polygon(np.array(points)).centroid
-        self.offsets = (-centroid.x, -centroid.y)
+        self.offsets = (-(chair_type.points[2][0]
+                          - chair_type.points[0][0]) / 2,
+                        -(chair_type.points[2][1]
+                          - chair_type.points[0][1]) / 2)
         self.points = points
 
 
@@ -508,6 +517,12 @@ class RoomInfo():
     _completions_length -- An int used to keep track of the length of
     _completions.
 
+    parameters_dict -- A dict containing info on the parameters used on the
+    tool.
+
+    window_info_dict -- A dict containing info on the window settings for the
+    tool.
+
 
     Public Methods:
 
@@ -557,8 +572,78 @@ class RoomInfo():
     completions dictionary if it is valid.
     """
 
-    def __init__(self):
-        """Initializes an instance of the RoomInfo class. """
+    def __init__(self, parameters_dict, window_info_dict):
+        """Initializes an instance of the RoomInfo class with the given room
+        parameters.
+
+
+        Keyword Arguments:
+
+        parameters_dict -- A dict containing the parameters for the room. For
+        the current version, this should be a dict formatted in the following
+        way:
+        {
+        "screen_height" : <The height (int) of your physical screen in pixels.>
+
+        "screen_width" : <The width (int) of Your physical screen in pixels.>
+
+        "room_type" : <The type of room this is for (str) either "Fixed" or
+                       "Empty".> (Currently not working)
+
+        "floor" : <The path to the image file of the room diagram on your
+                   computer (str).>
+
+        "load_from_json" : <True or False (bool) whether or not to load the
+                            data from json_load_name.> (Currently not working)
+
+        "json_load_name" : <Json file to load data from if load_from_json is
+                           True (str).> (Currently not working)
+
+        "save_to_json" : <True or False (bool) whether or not to save the data
+                          stored in room_info to a json file.> (Currently not
+                          working)
+
+        "json_save_name" : <The name of the json to save the data to if
+                            save_to_json is True (str).> (Currently not
+                            working)
+
+        "scale_length_units" : <How many units long the room diagram's scale is
+                                (int or float).>
+
+        "units_to_distance" : <How many units to distance seats by
+                               (int or float).>
+
+        "scale_orientation" : <The orientation of the scale (str). Either
+                               "Horizontal" or "Vertical".>
+
+        "chair_scale" : <The amount by which to scale up chairs when defining
+                         their shapes (int).>
+
+        "solution_name" : <The name to give the solution image (str).>
+
+        "solution_dpi" : <The dpi to use when making the solution image (int).>
+
+        "finding_threshold" : <The finding threshold when recognizing chairs
+                               (float). Less than 1.>
+
+        "show_instructions" : <Whether or not to show instructions to the user
+                               when having them make inputs. True or False
+                               (bool).>
+        }
+
+        window_info_dict -- A dict containing other information for the tool
+        window formatted in the following way:
+        {
+        "height" : <The image height (int).>,
+
+        "width" : <The image width (int).>,
+
+        "window_height" :  <The height to make the window (int).>,
+
+        "window_width" : <The width to make the window (int).>,
+        }
+        """
+        #TODO add assertions on parameters_dict
         self._scale = NOT_SET
         self._chair_types = NOT_SET
         self._chair_polys = NOT_SET
@@ -570,8 +655,11 @@ class RoomInfo():
                              "Chair Recognition Status" : False,
                              "Chair Addition Status" : False,
                              "Chair Deletion Status" : False,
-                             "Input Confirmation Status" : False}
+                             "Input Confirmation Status" : False,
+                             "Solve Room Status" : False}
         self._completions_length = len(self._completions)
+        self.parameters_dict = parameters_dict
+        self.window_info_dict = window_info_dict
 
     #TODO add create_new_room_scale()
 

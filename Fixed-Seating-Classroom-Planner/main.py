@@ -81,7 +81,7 @@ def launch_classroom_planner(screen_height, screen_width, room_type, floor,
     solution_name -- The filename (string) to use when writing the solution
     diagram.
 
-    solution_dpi -- The dpi (int) to use when writing the solution diagram.
+    sol_dpi -- The dpi (int) to use when writing the solution diagram.
 
     finding_threshold -- The finding_threshold for the recognition process.
     A float with a minimum of 0 and maximum of 1. Higher values will result in
@@ -91,21 +91,43 @@ def launch_classroom_planner(screen_height, screen_width, room_type, floor,
 
     show_instr -- A bool representing whether or not to show instructions.
     """
+    #TODO: assert preconditions
     floor_img = cv2.imread(floor, cv2.IMREAD_UNCHANGED)
-    room_info = cpg.RoomInfo()
+
+
 
     (height, window_height,
      width, window_width) = __set_window_size_properties(floor_img,
                                                          screen_height,
                                                          screen_width)
 
+    parameters_dict = {"screen_height" : screen_height,
+                       "screen_width" : screen_width,
+                       "room_type" : room_type,
+                       "floor" : floor,
+                       "load_from_json" : load_from_json,
+                       "json_load_name" : json_load_name,
+                       "save_to_json" : save_to_json,
+                       "json_save_name" : json_save_name,
+                       "scale_length_units" : scale_units_length,
+                       "units_to_distance" : units_to_distance,
+                       "scale_orientation" : scale_orientation,
+                       "chair_scale" : chair_scale,
+                       "solution_name" : solution_name,
+                       "solution_dpi" : sol_dpi,
+                       "finding_threshold" : finding_threshold,
+                       "show_instructions" : show_instr}
+
+    window_info_dict = {"height" : height,
+                        "width" : width,
+                        "window_height" :  window_height,
+                        "window_width" : window_width}
+
+    room_info = cpg.RoomInfo(parameters_dict, window_info_dict)
     non_writable_img = cv2.imread(floor)
 
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
     cv2.resizeWindow(WINDOW_NAME, window_width, window_height)
 
     cpmenu.main_menu(screen_height, screen_width, room_type, room_info,
-                     save_to_json, json_save_name, scale_units_length,
-                     units_to_distance, scale_orientation, chair_scale,
-                     solution_name, sol_dpi, finding_threshold, show_instr,
-                     WINDOW_NAME, DOT_SIZE, height, width, non_writable_img)
+                     WINDOW_NAME, non_writable_img)

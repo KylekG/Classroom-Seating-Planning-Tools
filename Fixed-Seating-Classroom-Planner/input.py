@@ -110,11 +110,8 @@ def __get_scale_selection_click_coords(event, x, y, flags, temp_dat):
         if len(temp_dat.ref) > 0:
             del temp_dat.ref[-1]
             temp_dat.refresh.append('r')
-
-def scale_selection(non_writable_img, menu_refresh, show_instr, window_name,
-                    screen_height, screen_width, room_info, height, width,
-                    selected_color, temp_color, orientation, scale_units,
-                    distance_units):
+def scale_selection(non_writable_img, menu_refresh, window_name,
+                    room_info):
     """scale_selection handles the scale selection input section of the room
     solving process. This function provides the user with an easy way of having
     the tool calculate distances within a diagram based off of mouse clicks on
@@ -132,39 +129,22 @@ def scale_selection(non_writable_img, menu_refresh, show_instr, window_name,
     menu_refresh -- A list that will be appended to upon completion of the
     function.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
 
     room_info -- The RoomInfo instance being used to keep track of input
     information.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    selected_color -- The color to use (in BGR Tuple form) when drawing
-    rectangles showing the user selected araea.
-
-    temp_color -- The color to use (in BGR Tuple form) when drawing what the
-    user selected area will be if the user left clicks.
-
-    orientation -- the orientation of the room diagram's scale. Must be Either
-    the string value "Horizontal" or "Vertical".
-
-    scale_units -- How many units (feet meters e.t.c.) long the room diagram's
-    scale is. Must be an int or a float.
-
-    distance_units -- How many units (same units as scale_units) to distance
-    seats within the room by. Must be an int or float.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    selected_color = cpg.PURPLE
+    temp_color = cpg.GREEN
+    orientation = room_info.parameters_dict["scale_orientation"]
+    scale_units = room_info.parameters_dict["scale_length_units"]
+    distance_units = room_info.parameters_dict["units_to_distance"]
+
     if show_instr:
         instruct.scale_selection_explanation(window_name, screen_height,
                                              screen_width)
@@ -246,9 +226,8 @@ def __get_chair_type_selection_click_coords(event, x, y, flags, temp_dat):
         if len(temp_dat.ref) > 0:
             del temp_dat.ref[-1]
             temp_dat.refresh.append('r')
-def chair_type_selection(non_writable_img, menu_refresh, show_instr,
-                         window_name, screen_height, screen_width, room_info,
-                         height, width, selected_color, temp_color):
+def chair_type_selection(non_writable_img, menu_refresh, window_name,
+                         room_info):
     """chair_type_selection handles the chair type selection input section of
     the room solving process. This function provides the user with an easy way
     of supplying the tool  with information on the different chair orientations
@@ -267,30 +246,20 @@ def chair_type_selection(non_writable_img, menu_refresh, show_instr,
     menu_refresh -- A list that will be appended to upon completion of the
     function.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
 
     room_info -- The RoomInfo instance being used to keep track of input
     information.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    selected_color -- The color to use (in BGR Tuple form) when drawing
-    rectangles showing the user selected araea.
-
-    temp_color -- The color to use (in BGR Tuple form) when drawing what the
-    user selected area will be if the user left clicks.
     """
+
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    selected_color = cpg.PURPLE
+    temp_color = cpg.GREEN
+
     if show_instr:
         instruct.chair_type_selection_explanation(window_name, screen_height,
                                                   screen_width)
@@ -361,9 +330,8 @@ def __polygon_creation_click_coords(event, x, y, flags, temp_dat):
     elif event == cv2.EVENT_RBUTTONDOWN:   # right-click to delete the latest point added to ref from the polygon
         del temp_dat.ref[-1]
         temp_dat.refresh.append('r')
-def polygon_creation(non_writable_img, menu_refresh, room_info, show_instr,
-                     window_name, screen_height, screen_width, height, width,
-                     line_color, chair_scale, dot_size):
+
+def polygon_creation(non_writable_img, menu_refresh, window_name, room_info):
     """polygon_creation handles the polygon creation input section of the room
     solving process. This function provides the user with an easy way
     of defining the physical shape of the chair within each previously
@@ -387,29 +355,17 @@ def polygon_creation(non_writable_img, menu_refresh, room_info, show_instr,
     information. Must already have _ChairType instances contained within
     room_info._chair_types.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    line_color -- The color to use (in BGR Tuple form) when drawing the
-    lines and dots of the current polygon from the user definitions.
-
-    chair_scale -- The amount (int) to scale each chair orientation up by when
-    making the chair shape inputs.
-
-    dot_size -- The size (int) to draw dots at clicked points of the polygon.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    line_color = cpg.RED
+    chair_scale = room_info.parameters_dict["chair_scale"]
+    dot_size = cpg.DOT_SIZE
+
     if show_instr:
         instruct.polygon_creation_explanation(window_name, screen_height,
                                               screen_width)
@@ -469,9 +425,7 @@ def polygon_creation(non_writable_img, menu_refresh, room_info, show_instr,
     room_info.set_chair_polys(list_of_chair_polys)
     menu_refresh.append('r')
 
-def chair_recognition(non_writable_img, menu_refresh, room_info, show_instr,
-                      window_name, screen_height, screen_width, height, width,
-                      finding_threshold, line_color):
+def chair_recognition(non_writable_img, menu_refresh, window_name, room_info):
     """chair_recognition handles the chair recognition input section of the
     room solving progress. This function identifies chairs within the room
     based off of the previously selected chair orientations and provided
@@ -494,29 +448,16 @@ def chair_recognition(non_writable_img, menu_refresh, room_info, show_instr,
     room_info._chair_types and _ChairPoly instances contained within
     room_info._chair_polys.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    finding_threshold -- The finding_threshold for the recognition process.
-    A float with a minimum of 0 and maximum of 1. Higher values will result in
-    less chairs  being placed. At 1, no chairs will be identified, but
-    finding_threshold that are too low will result in erroneous chair placements.
-
-    line_color -- The color to use (in BGR Tuple form) when drawing the
-    identified chairs.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    line_color = cpg.RED
+    finding_threshold = room_info.parameters_dict["finding_threshold"]
+
     if show_instr:
         instruct.chair_recognition_explanation(window_name, screen_height,
                                                screen_width)
@@ -601,9 +542,7 @@ def __place_Chair(event, x, y, flags, temp_dat):
     if event == cv2.EVENT_RBUTTONDOWN:
         del temp_dat.ref[-1]
         temp_dat.refresh.append('r')
-def chair_addition(non_writable_img, menu_refresh, room_info, show_instr,
-                   window_name, screen_height, screen_width, height, width,
-                   line_color, selected_color, temp_color):
+def chair_addition(non_writable_img, menu_refresh, window_name, room_info):
     """chair_addition handles the chair addition input section of the
     room solving progress. This function allows users to designate chairs
     within the room based off of the previously selected chair orientations.
@@ -630,30 +569,17 @@ def chair_addition(non_writable_img, menu_refresh, room_info, show_instr,
     room_info._chair_polys. Also requires room_info._chairs to already have
     been set to a list of _Chair instances.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    line_color -- The color to use (in BGR Tuple form) when drawing the
-    identified chairs.
-
-    selected_color -- The color to use (in BGR Tuple form) when drawing the
-    user-added chairs.
-
-    temp_color -- The color to use (in BGR Tuple form) when drawing the
-    preview chair.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    line_color = cpg.RED
+    selected_color = cpg.PURPLE
+    temp_color = cpg.GREEN
+
     if show_instr:
         instruct.chair_addition_explanation(window_name, screen_height,
                                             screen_width)
@@ -698,12 +624,13 @@ def chair_addition(non_writable_img, menu_refresh, room_info, show_instr,
                                                         temp_chair_poly,
                                                         temp_chair_coords)
                 temp_chair.draw(writable_clone, temp_color, 1)
+            #Draw added chairs
             for added_chair_ref in temp_dat.ref:
                 added_chair_poly = chair_poly_types[added_chair_ref[2]]
                 added_chair_type = added_chair_poly.chair_type
                 added_chair_coords = (added_chair_ref[0], added_chair_ref[1])
-                added_chair = room_info.create_new_chair(temp_chair_type,
-                                                         temp_chair_poly,
+                added_chair = room_info.create_new_chair(added_chair_type,
+                                                         added_chair_poly,
                                                          added_chair_coords)
                 added_chair.draw(writable_clone, selected_color, 1)
             refresh = []
@@ -716,17 +643,21 @@ def chair_addition(non_writable_img, menu_refresh, room_info, show_instr,
                 temp_dat.chair_selection = temp_dat.chair_selection + 1
             else:
                 temp_dat.chair_selection = 0
+            temp_dat.refresh = ['r']
         elif key == ord('a'): #shift to the previous chair type if key 'd' is pressed
             if temp_dat.chair_selection > 0:
                 temp_dat.chair_selection = temp_dat.chair_selection - 1
             else:
                 temp_dat.chair_selection = total_chair_types
-
+            temp_dat.refresh = ['r']
+        elif key == ord('s'):
+            for added_chair_ref in temp_dat.ref:
+                print(added_chair_ref)
     for added_chair_ref in temp_dat.ref:
         added_chair_poly = chair_poly_types[added_chair_ref[2]]
         added_chair_type = added_chair_poly.chair_type
-        added_chair = room_info.create_new_chair(temp_chair_type,
-                                                 temp_chair_poly,
+        added_chair = room_info.create_new_chair(added_chair_type,
+                                                 added_chair_poly,
                                                  (added_chair_ref[0],
                                                   added_chair_ref[1]))
         room_info.add_chair(added_chair)
@@ -756,9 +687,7 @@ def __delete_chairs(event, x, y, flags, temp_dat):
     if event == cv2.EVENT_RBUTTONDOWN:
         del temp_dat.ref[-1]
         temp_dat.refresh.append('r')
-def chair_deletion(non_writable_img, menu_refresh, window_name, screen_height,
-                   screen_width, room_info, show_instr, height, width,
-                   selected_color, temp_color, line_color):
+def chair_deletion(non_writable_img, menu_refresh, window_name, room_info):
     """chair_deletion handles the chair deletion input section of the
     room solving progress. This function allows users to delete identified
     chairs from room_info._chairs. This function displays the provided room
@@ -778,34 +707,21 @@ def chair_deletion(non_writable_img, menu_refresh, window_name, screen_height,
 
     window_name -- The name (string) of the cv2 window for the function to use.
 
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
     room_info -- The RoomInfo instance being used to keep track of input
     information. Must already have _ChairType instances contained within
     room_info._chair_types and _ChairPoly instances contained within
     room_info._chair_polys. Also requires room_info._chairs to already have
     been set to a list of _Chair instances.
-
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
-    height -- The height (int) to make the window.
-
-    width -- The width (int) to make the window.
-
-    selected_color -- The color to use (in BGR Tuple form) when drawing
-    completed chair deletion rectangles.
-
-    temp_color -- The color to use (in BGR Tuple form) when drawing a preview
-    of the chair deletion rectangle that would be completed on mouseleft click.
-
-    line_color -- The color to use (in BGR Tuple form) when drawing the
-    identified chairs.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    line_color = cpg.RED
+    selected_color = cpg.PURPLE
+    temp_color = cpg.GREEN
+
     if show_instr:
         instruct.chair_deletion_explanation(window_name, screen_height,
                                             screen_width)
@@ -900,9 +816,7 @@ def chair_deletion(non_writable_img, menu_refresh, window_name, screen_height,
             del remove_these[0]
     menu_refresh.append('r')
 
-def input_preview(non_writable_img, menu_refresh, window_name, screen_height,
-                  screen_width, room_info, show_instr, height, width,
-                  line_color, selected_color, save_to_json, json_save_name):
+def input_preview(non_writable_img, menu_refresh, window_name, room_info):
     """input_preview allows the user to preview all of their inputs by making
     the window display the diagram with all of their inputs.
 
@@ -915,12 +829,6 @@ def input_preview(non_writable_img, menu_refresh, window_name, screen_height,
     function.
 
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
 
     room_info -- The RoomInfo instance being used to keep track of input
     information. Must already have _ChairType instances contained within
@@ -946,6 +854,15 @@ def input_preview(non_writable_img, menu_refresh, window_name, screen_height,
 
     json_save_name -- The filename to use when saving the data to json.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    height = room_info.window_info_dict["height"]
+    width = room_info.window_info_dict["width"]
+    line_color = cpg.RED
+    selected_color = cpg.PURPLE
+    save_to_json = room_info.parameters_dict["save_to_json"]
+    json_save_name = room_info.parameters_dict["json_save_name"]
     if show_instr:
         instruct.input_preview_explanation(window_name, screen_height,
                                            screen_width)
@@ -1017,9 +934,7 @@ def __miset(nodes, edges, solver):
 
     return(sol)
 
-def solve_room(non_writable_img, menu_refresh, show_instr, window_name,
-               screen_height, screen_width, room_info, solution_dpi,
-               solution_name):
+def solve_room(non_writable_img, menu_refresh, window_name, room_info):
     """solve_room converts the input into a graph representation of the room
     and solves it for maximum occupancy under the social distancing
     constraints. Upon completion, it saves a diagram clearly displaying the
@@ -1036,16 +951,7 @@ def solve_room(non_writable_img, menu_refresh, show_instr, window_name,
     menu_refresh -- A list that will be appended to upon completion of the
     function.
 
-    show_instr -- A bool that tells the function whether or not to show
-    instructions to the user.
-
     window_name -- The name (string) of the cv2 window for the function to use.
-
-    screen_height -- The height (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
-
-    screen_width -- The width (in pixels) of the user's screen. Must be an
-    int. Can be less than the true amount but cannot be more.
 
     room_info -- The RoomInfo instance being used to keep track of input
     information. Must already have _ChairType instances contained within
@@ -1058,6 +964,12 @@ def solve_room(non_writable_img, menu_refresh, show_instr, window_name,
     solution_name -- The filename (string) to use when writing the solution
     diagram.
     """
+    show_instr = room_info.parameters_dict["show_instructions"]
+    screen_height = room_info.parameters_dict["screen_height"]
+    screen_width = room_info.parameters_dict["screen_width"]
+    solution_dpi = room_info.parameters_dict["solution_dpi"]
+    solution_name = room_info.parameters_dict["solution_name"]
+
     if show_instr:
          instruct.solve_room_explanation(window_name, screen_height,
                                          screen_width)
@@ -1149,4 +1061,5 @@ def solve_room(non_writable_img, menu_refresh, show_instr, window_name,
     plt.savefig(solution_name + ".jpg", orientation = 'portrait',
                 format = 'jpg',
                 dpi = solution_dpi)
+    menu_refresh.append('r')
     return
