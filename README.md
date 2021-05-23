@@ -14,16 +14,16 @@ diagram indicating the spaces chosen by the tool.
 
 
 ## Dependencies
-Matplotlib 3.1.3
-Numoy 1.18.1
-Pandas 1.0.1
-Networkx 2.4
-Shapely 1.7.0
-Scipy 1.4.1
-Skimage 0.16.2
-Cv2 4.3.0
-Ortools 7.7.7810
-JupyterNotebook
+- Matplotlib 3.1.3
+- Numpy 1.18.1
+- Pandas 1.0.1
+- Networkx 2.4
+- Shapely 1.7.0
+- Scipy 1.4.1
+- Skimage 0.16.2
+- Cv2 4.3.0
+- Ortools 7.7.7810
+- JupyterNotebook
 
 ## Disclaimer
 - All room diagrams provided to the tool must have a scale and example 
